@@ -15,7 +15,7 @@ git init
 git add .
 git commit -m "Initial commit"
 # Create a new repo on GitHub, then run:
-git remote add origin <your-repo-url>
+git remote add origin https://github.com/edusatyaki/attendance-system.git
 git push -u origin main
 ```
 
