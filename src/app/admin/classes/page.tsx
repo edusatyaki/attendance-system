@@ -1,8 +1,9 @@
 import db from '@/lib/db';
 import { AddCourseForm, CourseList } from './components';
 
-export default function ClassesPage() {
-    const courses = db.prepare('SELECT * FROM courses ORDER BY name').all() as any[];
+export default async function ClassesPage() {
+    const coursesRes = await db.query('SELECT * FROM courses ORDER BY name');
+    const courses = coursesRes.rows;
 
     return (
         <div>

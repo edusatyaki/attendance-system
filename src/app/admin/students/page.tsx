@@ -7,14 +7,17 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
     const query = q || '';
 
     // Fetch students
-    const students = db.prepare(`
+    // Fetch students
+    const studentsRes = await db.query(`
     SELECT * FROM students 
-    WHERE name LIKE ? OR id LIKE ? OR batch LIKE ?
+    WHERE name ILIKE $1 OR id ILIKE $2 OR batch ILIKE $3
     ORDER BY batch, name
-  `).all(`%${query}%`, `%${query}%`, `%${query}%`) as any[];
+  `, [`%${query}%`, `%${query}%`, `%${query}%`]);
+    const students = studentsRes.rows;
 
     // Fetch batches for the dropdown
-    const batches = db.prepare('SELECT name FROM batches ORDER BY name').all() as { name: string }[];
+    const batchesRes = await db.query('SELECT name FROM batches ORDER BY name');
+    const batches = batchesRes.rows as { name: string }[];
 
     return (
         <div>

@@ -15,7 +15,8 @@ export async function login(prevState: any, formData: FormData) {
     }
 
     try {
-        const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email) as any;
+        const result = await db.query('SELECT * FROM users WHERE email = $1', [email]);
+        const user = result.rows[0];
 
         if (!user || user.password !== password) {
             return { error: 'Invalid email or password.' };

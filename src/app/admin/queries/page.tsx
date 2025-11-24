@@ -3,27 +3,29 @@ import { QueryList, DownloadButton } from './components';
 import SearchInput from '@/components/SearchInput';
 import StatusFilter from '@/components/StatusFilter';
 
-export default function Page({ searchParams }: { searchParams: { q?: string, status?: string } }) {
-    const query = searchParams.q || '';
-    const status = searchParams.status || '';
+export default async function Page({ searchParams }: { searchParams: Promise<{ q?: string, status?: string }> }) {
+    const { q, status: s } = await searchParams;
+    const query = q || '';
+    const status = s || '';
 
     let sql = `
     SELECT q.*, s.name as student_name 
     FROM queries q
     JOIN students s ON q.student_id = s.id
-    WHERE (s.name LIKE ? OR s.id LIKE ?)
+    WHERE (s.name ILIKE $1 OR s.id ILIKE $2)
   `;
 
     const params = [`%${query}%`, `%${query}%`];
 
     if (status) {
-        sql += ` AND q.status = ?`;
+        sql += ` AND q.status = $3`;
         params.push(status);
     }
 
     sql += ` ORDER BY q.created_at DESC`;
 
-    const queries = db.prepare(sql).all(...params) as any[];
+    const queriesRes = await db.query(sql, params);
+    const queries = queriesRes.rows;
 
     return (
         <div>

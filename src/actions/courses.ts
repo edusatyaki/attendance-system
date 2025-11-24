@@ -11,7 +11,7 @@ export async function addCourse(prevState: any, formData: FormData) {
     }
 
     try {
-        db.prepare('INSERT INTO courses (name) VALUES (?)').run(name);
+        await db.query('INSERT INTO courses (name) VALUES ($1)', [name]);
         revalidatePath('/admin/classes');
         return { success: 'Course added successfully!' };
     } catch (error) {
@@ -22,7 +22,7 @@ export async function addCourse(prevState: any, formData: FormData) {
 
 export async function deleteCourse(id: number) {
     try {
-        db.prepare('DELETE FROM courses WHERE id = ?').run(id);
+        await db.query('DELETE FROM courses WHERE id = $1', [id]);
         revalidatePath('/admin/classes');
         return { success: true };
     } catch (error) {

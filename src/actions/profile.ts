@@ -20,7 +20,7 @@ export async function updatePassword(prevState: any, formData: FormData) {
     }
 
     try {
-        db.prepare('UPDATE users SET password = ? WHERE id = ?').run(password, session.id);
+        await db.query('UPDATE users SET password = $1 WHERE id = $2', [password, session.id]);
         return { success: 'Password updated successfully.' };
     } catch (error) {
         console.error('Update password error:', error);

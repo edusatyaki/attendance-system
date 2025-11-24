@@ -11,7 +11,7 @@ export async function addBatch(prevState: any, formData: FormData) {
     }
 
     try {
-        db.prepare('INSERT INTO batches (name) VALUES (?)').run(name);
+        await db.query('INSERT INTO batches (name) VALUES ($1)', [name]);
         revalidatePath('/admin/batches');
         return { success: 'Batch added successfully!' };
     } catch (error) {
@@ -22,7 +22,7 @@ export async function addBatch(prevState: any, formData: FormData) {
 
 export async function deleteBatch(id: number) {
     try {
-        db.prepare('DELETE FROM batches WHERE id = ?').run(id);
+        await db.query('DELETE FROM batches WHERE id = $1', [id]);
         revalidatePath('/admin/batches');
         return { success: true };
     } catch (error) {
@@ -34,15 +34,21 @@ export async function deleteBatch(id: number) {
 export async function updateBatchMapping(batchId: number, courseIds: number[]) {
     try {
         // Transaction to update mapping
-        const insert = db.prepare('INSERT INTO batch_courses (batch_id, course_id) VALUES (?, ?)');
-        const deleteOld = db.prepare('DELETE FROM batch_courses WHERE batch_id = ?');
+        const client = await db.connect();
+        try {
+            await client.query('BEGIN');
+            await client.query('DELETE FROM batch_courses WHERE batch_id = $1', [batchId]);
 
-        db.transaction(() => {
-            deleteOld.run(batchId);
             for (const courseId of courseIds) {
-                insert.run(batchId, courseId);
+                await client.query('INSERT INTO batch_courses (batch_id, course_id) VALUES ($1, $2)', [batchId, courseId]);
             }
-        })();
+            await client.query('COMMIT');
+        } catch (e) {
+            await client.query('ROLLBACK');
+            throw e;
+        } finally {
+            client.release();
+        }
 
         revalidatePath('/admin/batches');
         return { success: true };

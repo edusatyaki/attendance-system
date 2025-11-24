@@ -12,24 +12,26 @@ export async function addStudent(prevState: any, formData: FormData) {
 
     try {
         // Get mapped courses for the batch
-        const batchData = db.prepare('SELECT id FROM batches WHERE name = ?').get(batch) as { id: number };
+        const batchRes = await db.query('SELECT id FROM batches WHERE name = $1', [batch]);
+        const batchData = batchRes.rows[0];
         let courseList = '[]';
 
         if (batchData) {
-            const courses = db.prepare(`
+            const coursesRes = await db.query(`
                 SELECT c.name FROM courses c
                 JOIN batch_courses bc ON c.id = bc.course_id
-                WHERE bc.batch_id = ?
-            `).all(batchData.id) as { name: string }[];
-            courseList = JSON.stringify(courses.map(c => c.name));
+                WHERE bc.batch_id = $1
+            `, [batchData.id]);
+            const courses = coursesRes.rows;
+            courseList = JSON.stringify(courses.map((c: any) => c.name));
         }
 
         // Insert into students table
-        db.prepare('INSERT INTO students (id, name, email, batch, course_list) VALUES (?, ?, ?, ?, ?)').run(enrollment, name, email, batch, courseList);
+        await db.query('INSERT INTO students (id, name, email, batch, course_list) VALUES ($1, $2, $3, $4, $5)', [enrollment, name, email, batch, courseList]);
 
         // Create user account for student (default password = abcd@1234)
         const password = 'abcd@1234';
-        db.prepare('INSERT INTO users (email, password, role, student_id) VALUES (?, ?, ?, ?)').run(email, password, 'student', enrollment);
+        await db.query('INSERT INTO users (email, password, role, student_id) VALUES ($1, $2, $3, $4)', [email, password, 'student', enrollment]);
 
         revalidatePath('/admin/students');
         return { success: 'Student added successfully!' };
@@ -42,7 +44,7 @@ export async function addStudent(prevState: any, formData: FormData) {
 export async function deleteStudent(enrollment: string) {
     try {
         // Deleting from students table will cascade delete from users and queries due to FK constraints
-        db.prepare('DELETE FROM students WHERE id = ?').run(enrollment);
+        await db.query('DELETE FROM students WHERE id = $1', [enrollment]);
         revalidatePath('/admin/students');
         return { success: true };
     } catch (error) {
@@ -65,11 +67,11 @@ export async function uploadStudents(prevState: any, formData: FormData) {
         const sheet = workbook.Sheets[sheetName];
         const data = XLSX.utils.sheet_to_json(sheet) as any[];
 
-        const insertStudent = db.prepare('INSERT OR IGNORE INTO students (id, name, email, batch, course_list) VALUES (?, ?, ?, ?, ?)');
-        const insertUser = db.prepare('INSERT OR IGNORE INTO users (email, password, role, student_id) VALUES (?, ?, ?, ?)');
+        const client = await db.connect();
+        try {
+            await client.query('BEGIN');
 
-        const transaction = db.transaction((students) => {
-            for (const student of students) {
+            for (const student of data) {
                 // Expecting columns: Enrollment, Name, Email, Batch
                 const enrollment = student['Enrollment'] || student['enrollment'];
                 const name = student['Name'] || student['name'];
@@ -78,26 +80,33 @@ export async function uploadStudents(prevState: any, formData: FormData) {
 
                 if (enrollment && name && email && batch) {
                     // Get mapped courses for the batch
-                    const batchData = db.prepare('SELECT id FROM batches WHERE name = ?').get(batch) as { id: number };
+                    const batchRes = await client.query('SELECT id FROM batches WHERE name = $1', [batch]);
+                    const batchData = batchRes.rows[0];
                     let courseList = '[]';
 
                     if (batchData) {
-                        const courses = db.prepare(`
+                        const coursesRes = await client.query(`
                             SELECT c.name FROM courses c
                             JOIN batch_courses bc ON c.id = bc.course_id
-                            WHERE bc.batch_id = ?
-                        `).all(batchData.id) as { name: string }[];
-                        courseList = JSON.stringify(courses.map(c => c.name));
+                            WHERE bc.batch_id = $1
+                        `, [batchData.id]);
+                        const courses = coursesRes.rows;
+                        courseList = JSON.stringify(courses.map((c: any) => c.name));
                     }
 
-                    insertStudent.run(enrollment, name, email, batch, courseList);
+                    await client.query('INSERT INTO students (id, name, email, batch, course_list) VALUES ($1, $2, $3, $4, $5) ON CONFLICT DO NOTHING', [enrollment, name, email, batch, courseList]);
                     const password = 'abcd@1234';
-                    insertUser.run(email, password, 'student', enrollment);
+                    await client.query('INSERT INTO users (email, password, role, student_id) VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING', [email, password, 'student', enrollment]);
                 }
             }
-        });
 
-        transaction(data);
+            await client.query('COMMIT');
+        } catch (e) {
+            await client.query('ROLLBACK');
+            throw e;
+        } finally {
+            client.release();
+        }
         revalidatePath('/admin/students');
         return { success: `Processed ${data.length} records.` };
     } catch (error) {
@@ -108,7 +117,7 @@ export async function uploadStudents(prevState: any, formData: FormData) {
 
 export async function updateStudentPassword(enrollment: string, newPassword: string) {
     try {
-        db.prepare('UPDATE users SET password = ? WHERE student_id = ?').run(newPassword, enrollment);
+        await db.query('UPDATE users SET password = $1 WHERE student_id = $2', [newPassword, enrollment]);
         revalidatePath('/admin/students');
         return { success: true };
     } catch (error) {

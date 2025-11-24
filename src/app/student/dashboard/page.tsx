@@ -5,9 +5,12 @@ export default async function StudentDashboard() {
     const session = await getSession();
     if (!session) return null;
 
-    const totalQueries = db.prepare('SELECT COUNT(*) as count FROM queries WHERE student_id = ?').get(session.student_id) as { count: number };
-    const pendingQueries = db.prepare("SELECT COUNT(*) as count FROM queries WHERE student_id = ? AND status = 'Pending'").get(session.student_id) as { count: number };
-    const approvedQueries = db.prepare("SELECT COUNT(*) as count FROM queries WHERE student_id = ? AND status = 'Approved'").get(session.student_id) as { count: number };
+    const totalQueriesRes = await db.query('SELECT COUNT(*) as count FROM queries WHERE student_id = $1', [session.student_id]);
+    const totalQueries = totalQueriesRes.rows[0];
+    const pendingQueriesRes = await db.query("SELECT COUNT(*) as count FROM queries WHERE student_id = $1 AND status = 'Pending'", [session.student_id]);
+    const pendingQueries = pendingQueriesRes.rows[0];
+    const approvedQueriesRes = await db.query("SELECT COUNT(*) as count FROM queries WHERE student_id = $1 AND status = 'Approved'", [session.student_id]);
+    const approvedQueries = approvedQueriesRes.rows[0];
 
     return (
         <div>

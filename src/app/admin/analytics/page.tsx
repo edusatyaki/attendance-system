@@ -1,13 +1,15 @@
 import db from '@/lib/db';
 import { AnalyticsCharts } from './components';
 
-export default function AnalyticsPage() {
+export default async function AnalyticsPage() {
     // Status Distribution
-    const statusStats = db.prepare('SELECT status, COUNT(*) as count FROM queries GROUP BY status').all() as { status: string, count: number }[];
+    const statusStatsRes = await db.query('SELECT status, COUNT(*) as count FROM queries GROUP BY status');
+    const statusStats = statusStatsRes.rows;
 
     // Monthly Trends (Mocking month extraction for SQLite)
     // SQLite doesn't have easy month extraction without extensions, so we'll fetch all and process in JS for this scale.
-    const allQueries = db.prepare('SELECT created_at FROM queries').all() as { created_at: string }[];
+    const allQueriesRes = await db.query('SELECT created_at FROM queries');
+    const allQueries = allQueriesRes.rows;
 
     const monthlyStats = allQueries.reduce((acc, q) => {
         const month = new Date(q.created_at).toLocaleString('default', { month: 'short' });

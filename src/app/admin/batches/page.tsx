@@ -1,12 +1,15 @@
 import db from '@/lib/db';
 import { AddBatchForm, BatchList } from './components';
 
-export default function BatchesPage() {
-    const batches = db.prepare('SELECT * FROM batches ORDER BY name').all() as any[];
-    const courses = db.prepare('SELECT * FROM courses ORDER BY name').all() as any[];
+export default async function BatchesPage() {
+    const batchesRes = await db.query('SELECT * FROM batches ORDER BY name');
+    const batches = batchesRes.rows;
+    const coursesRes = await db.query('SELECT * FROM courses ORDER BY name');
+    const courses = coursesRes.rows;
 
     // Get mappings
-    const mappings = db.prepare('SELECT * FROM batch_courses').all() as { batch_id: number, course_id: number }[];
+    const mappingsRes = await db.query('SELECT * FROM batch_courses');
+    const mappings = mappingsRes.rows as { batch_id: number, course_id: number }[];
 
     // Attach courses to batches
     const batchesWithCourses = batches.map(batch => ({

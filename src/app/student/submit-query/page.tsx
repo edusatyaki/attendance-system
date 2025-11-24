@@ -6,7 +6,8 @@ export default async function SubmitQueryPage() {
     const session = await getSession();
     if (!session) return null;
 
-    const student = db.prepare('SELECT * FROM students WHERE id = ?').get(session.student_id) as any;
+    const studentRes = await db.query('SELECT * FROM students WHERE id = $1', [session.student_id]);
+    const student = studentRes.rows[0];
 
     if (!student) {
         return <div className="card">Student record not found. Please contact admin.</div>;

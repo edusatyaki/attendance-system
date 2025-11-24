@@ -5,7 +5,8 @@ export default async function MyQueriesPage() {
     const session = await getSession();
     if (!session) return null;
 
-    const queries = db.prepare('SELECT * FROM queries WHERE student_id = ? ORDER BY created_at DESC').all(session.student_id) as any[];
+    const queriesRes = await db.query('SELECT * FROM queries WHERE student_id = $1 ORDER BY created_at DESC', [session.student_id]);
+    const queries = queriesRes.rows;
 
     return (
         <div>

@@ -1,10 +1,13 @@
 import db from '@/lib/db';
 
-export default function AdminDashboard() {
+export default async function AdminDashboard() {
     // Fetch stats
-    const studentCount = db.prepare('SELECT COUNT(*) as count FROM students').get() as { count: number };
-    const queryCount = db.prepare('SELECT COUNT(*) as count FROM queries').get() as { count: number };
-    const pendingCount = db.prepare("SELECT COUNT(*) as count FROM queries WHERE status = 'Pending'").get() as { count: number };
+    const studentCountRes = await db.query('SELECT COUNT(*) as count FROM students');
+    const studentCount = studentCountRes.rows[0];
+    const queryCountRes = await db.query('SELECT COUNT(*) as count FROM queries');
+    const queryCount = queryCountRes.rows[0];
+    const pendingCountRes = await db.query("SELECT COUNT(*) as count FROM queries WHERE status = 'Pending'");
+    const pendingCount = pendingCountRes.rows[0];
 
     return (
         <div>

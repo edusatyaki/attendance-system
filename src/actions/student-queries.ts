@@ -23,10 +23,10 @@ export async function submitQuery(prevState: any, formData: FormData) {
     }
 
     try {
-        db.prepare(`
+        await db.query(`
       INSERT INTO queries (student_id, batch, section, lecture_type, lecture_name, query_date, query_time, reason, other_reason)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(session.student_id, batch, section, lectureType, lectureName, date, time, reason, otherReason);
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+    `, [session.student_id, batch, section, lectureType, lectureName, date, time, reason, otherReason]);
 
         revalidatePath('/student/my-queries');
         revalidatePath('/student/dashboard');
